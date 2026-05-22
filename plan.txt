@@ -1,0 +1,15 @@
+pokemon_lite_project/
+│
+├── backend/                  # Folder khusus FastAPI (Python)
+│   ├── main.py               # <--- Kode Python yang tadi taruh di sini
+│   ├── requirements.txt      # Daftar library Python (fastapi, uvicorn, redis, dll)
+│   └── Dockerfile            # Buat container backend
+│
+├── frontend/                 # Folder khusus ReactJS
+│   ├── src/
+│   │   ├── components/       # Buat tombol, kotak status darah, dll
+│   │   └── assets/           # Gambar Pokemon, suara, dll
+│   ├── package.json
+│   └── Dockerfile            # Buat container frontend
+│
+└── docker-compose.yml        # File sakti buat jalanin frontend, backend, Redis, & RabbitMQ barengan
