@@ -5,10 +5,67 @@ from pydantic import BaseModel
 from typing import Dict, List
 import json
 import copy
+import redis
+import pika
+import threading
 
 app = Flask (__name__)
 CORS(app)
 sock = Sock(app)
+
+# Redis Setup (for storing game states and pub/sub)
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
+def get_game_state(game_id: str):
+    data = redis_client.get(f"room:{game_id}")
+    if data: return GameState.model_validate_json(data)
+    return None
+
+def save_game_state(game):
+    redis_client.set(f"room:{game.game_id}", game.model_dump_json())
+
+def delete_game_state(game_id: str):
+    redis_client.delete(f"room:{game_id}")
+
+# RabbitMQ Setup (for handling game actions)
+def publish_update(game_id: str, message: dict):
+    """Function to send messages to RabbitMQ when there's data exchange"""
+    try: 
+        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        channel = connection.channel()
+        channel.exchange_declare(exchange = 'battle_updates', exchange_type='fanout')
+        payLoad = {"game_id": game_id, "message": message}
+        channel.basic_publish(exchange='battle_updates', routing_key='', body=json.dumps(payLoad))
+        connection.close()
+    except Exception as e:
+        print(f"RabbitMQ publish error: {e}")
+
+def consume_rabbitmq():
+    """Runs on the background thread to receive message from RabbitMQ and broadcast to players"""
+    try:
+        connection= pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        channel = connection.channel()
+        channel.exchange_declare(exchange='battle_updates', exchange_type='fanout')
+        result = channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+        channel.queue_bind(exchange='battle_updates', queue=queue_name)
+
+        def callback(ch, method, properties, body):
+            data = json.loads(body)
+            game_id = data.get("game_id")
+            message = data.get("message")
+            manager.broadcast(game_id, message)
+
+        channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+        channel.start_consuming()
+    
+    except Exception as e:
+        print(f"RabbitMQ consumer error: {e}")
+
+# Start RabbitMQ consumer in a separate thread
+threading.Thread(target=consume_rabbitmq, daemon=True).start()
+
+
 
 # --- Models ---
 class Move(BaseModel): 
@@ -120,8 +177,6 @@ POKEMON_DB : Dict[int, Pokemon] = {
     )
 }
 
-ACTIVE_BATTLES : Dict[str, GameState] = {}
-
 TYPE_CHART = {
     "Water" : {"Fire" : 2.0, "Electric" : 0.5},
     "Fire" : {"Grass" : 2.0, "Water" : 0.5},
@@ -144,7 +199,7 @@ def calculate_damage(attacker: Pokemon, defender: Pokemon, move: Move):
 def get_all_pokemon() : 
     return jsonify({"data" : [p.model_dump() for p in POKEMON_DB.values()]})
 
-# --- Websocket Connection Manager ---
+# --- Websocket Connection Manager & Game Logic ---
 class ConnectionManager: 
     def __init__(self):
         self.active_games = {}
@@ -173,13 +228,14 @@ manager = ConnectionManager()
 
 # Websocket Endpoint
 @sock.route("/ws/battle/<game_id>/<player_name>")
+
 def battle_websocket(ws, game_id, player_name):
     manager.connect(ws, game_id)
 
-    if game_id not in ACTIVE_BATTLES:
-        ACTIVE_BATTLES[game_id] = GameState(game_id=game_id)
-    
-    game = ACTIVE_BATTLES[game_id]
+    game = get_game_state(game_id)
+    if not game:
+        game = GameState(game_id=game_id)
+        save_game_state(game)
 
     if player_name not in game.players:
         if len(game.players) >= 2:
@@ -190,11 +246,15 @@ def battle_websocket(ws, game_id, player_name):
         game.players[player_name] = PlayerState(player_name=player_name)
         game.battle_log.append(f"{player_name} has joined the room!")
 
+        save_game_state(game)
+
     if len(game.players) == 2 and game.status == "waiting":
         game.status = "selecting"
         game.battle_log.append(f"> Both players have joined! Please select your Pokemon.")
 
-    manager.broadcast(game_id, {"type" : "update", "state" : game.model_dump()})
+        save_game_state(game)
+
+    publish_update(game_id, {"type" : "update", "state" : game.model_dump()})
     
     try : 
         while True : 
@@ -204,7 +264,7 @@ def battle_websocket(ws, game_id, player_name):
 
             data = json.loads(raw_data)
             action = data.get("action")
-            game = ACTIVE_BATTLES.get(game_id)
+            game = get_game_state(game_id)
 
             if not game : continue
 
@@ -337,41 +397,41 @@ def battle_websocket(ws, game_id, player_name):
                         defender.must_switch = True
                         game.current_turn = defender.player_name
                         game.battle_log.append(f"> [{defender.player_name}] must choose a replacement Pokemon!")
-                
                 else : 
                     game.current_turn = defender.player_name
+            
+            save_game_state(game)
+            publish_update(game_id, {"type": "update", "state": game.model_dump()})
 
-                manager.broadcast(game_id, {"type": "update", "state": game.model_dump()})
-
-    except Exception : 
+    except Exception as e: 
+        print(f"Websocket Error: {e}")
         pass
 
     finally: 
         manager.disconnect(ws, game_id)
-        if game_id in ACTIVE_BATTLES: 
-            game = ACTIVE_BATTLES[game_id]
-            
-            # 1. Erase player from player list in the room
+
+        # Gain newest data from Redis to processed when there's output
+        game = get_game_state(game_id)
+        if game:
             if player_name in game.players:
                 del game.players[player_name]
-                game.battle_log.append(f"> [{player_name}] left the room.")
+                game.battle_log.append(f">[{player_name}] left the room.")
 
-            # 2. Check remaining players in the room
-            if len(game.players) == 0:
-                del ACTIVE_BATTLES[game_id]
-            else:
-                # If 1 player remains, return game status to 'waiting'
-                game.status = "waiting"
-                game.winner = None
-                game.current_turn = ""
-                for p in game.players.values():
-                    p.is_ready = False # Reset ready status of remaining player
-                    p.team = []
-                    p.active_pokemon_index = 0
-                    p.must_switch = False
-                    p.last_used_move = ""
-                
-                manager.broadcast(game_id, {"type": "update", "state": game.model_dump()})
+                if len(game.players) == 0:
+                    delete_game_state(game_id)
+                else:
+                    game.status = "waiting"
+                    game.winner = None
+                    game.current_turn = ""
+                    for p in game.players.values():
+                        p.is_ready = False
+                        p.team = []
+                        p.active_pokemon_index = 0
+                        p.must_switch = False
+                        p.last_used_move = ""
+
+                    save_game_state(game)
+                    publish_update(game_id, {"type": "update", "state": game.model_dump()})
 
 if __name__ == "__main__":
-    app.run(port = 8000, debug = True)
+    app.run(host="0.0.0.0", port=8000, debug=True)

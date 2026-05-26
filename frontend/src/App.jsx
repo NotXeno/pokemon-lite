@@ -260,7 +260,7 @@ function App() {
             <div className="flex gap-2">
               {enemyState.team.map((poke, idx) => (
                 <div key={idx} className={`flex-1 text-xs p-2 rounded text-center border ${idx === enemyState.active_pokemon_index ? 'bg-red-900 border-red-500 text-white' : poke.hp <= 0 ? 'bg-gray-900 border-gray-800 text-gray-600' : 'bg-gray-700 border-gray-600 text-gray-300'}`}>
-                  {poke.hp <= 0 ? 'Mati' : 'Hidup'}
+                  {poke.hp <= 0 ? 'Fainted' : 'Alive'}
                 </div>
               ))}
             </div>
