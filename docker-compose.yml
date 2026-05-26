@@ -9,6 +9,23 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
-      - "5672:5672"   # Main port to communicate with the Python
-      - "15672:15672" # Management port for RabbitMQ UI
-    restart: always 
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - rabbitmq
+    restart: always
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: always

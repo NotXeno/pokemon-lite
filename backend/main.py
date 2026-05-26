@@ -14,7 +14,7 @@ CORS(app)
 sock = Sock(app)
 
 # Redis Setup (for storing game states and pub/sub)
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 
 def get_game_state(game_id: str):
     data = redis_client.get(f"room:{game_id}")
@@ -31,7 +31,7 @@ def delete_game_state(game_id: str):
 def publish_update(game_id: str, message: dict):
     """Function to send messages to RabbitMQ when there's data exchange"""
     try: 
-        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
         channel = connection.channel()
         channel.exchange_declare(exchange = 'battle_updates', exchange_type='fanout')
         payLoad = {"game_id": game_id, "message": message}
@@ -43,7 +43,7 @@ def publish_update(game_id: str, message: dict):
 def consume_rabbitmq():
     """Runs on the background thread to receive message from RabbitMQ and broadcast to players"""
     try:
-        connection= pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        connection= pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
         channel = connection.channel()
         channel.exchange_declare(exchange='battle_updates', exchange_type='fanout')
         result = channel.queue_declare(queue='', exclusive=True)
