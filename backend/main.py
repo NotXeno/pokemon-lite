@@ -275,8 +275,19 @@ def battle_websocket(ws, game_id, player_name):
                 if poke_id in POKEMON_DB and len(player.team) < 3 :
                     new_poke = copy.deepcopy(POKEMON_DB[poke_id])
                     player.team.append(new_poke)
-                    game.battle_log.append(f"> [{player_name}] added {new_poke.name} to the team!")
+                    game.battle_log.append(f"> [{player_name}] added ??? Pokemon to the team!")
                     manager.broadcast(game_id, {"type": "update", "state": game.model_dump()})
+            
+            elif action == "remove_pokemon" and game.status == "selecting":
+                index_to_remove = data.get("index")
+                player = game.players[player_name]
+
+                if 0 <= index_to_remove < len(player.team) and not player.is_ready:
+                    removed_poke = player.team.pop(index_to_remove)
+                    game.battle_log.append(f"> [{player_name}] removed ??? Pokemon from the team!")
+
+                    save_game_state(game)
+                    publish_update(game_id, {"type": "update", "state": game.model_dump()})
 
             # Ready action
             elif action == "ready" and game.status == "selecting":

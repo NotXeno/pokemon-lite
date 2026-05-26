@@ -40,6 +40,13 @@ function App() {
     }
   }
 
+  // Remove Pokemon Function
+  const removePokemon = (index) => {
+    if (ws.current) {
+      ws.current.send(JSON.stringify({action: 'remove_pokemon', index: index}))
+    }
+  }
+
   // Ready Button Function
   const setReady = () => {
     if (ws.current) {
@@ -136,7 +143,18 @@ function App() {
               <h2 className="text-xl mb-4">My Team ({myState.team.length}/3)</h2>
               <div className="flex justify-center gap-4 mb-6">
                 {myState.team.map((p, idx) => (
-                  <div key={idx} className="bg-gray-700 p-3 rounded text-green-400 font-bold border border-green-500">{p.name}</div>
+                  <div key={idx} className="relative bg-gray-700 p-3 rounded text-green-400 font-bold border border-green-500">
+                    {/* X Button (Will show if not ready) */}
+                    {!myState.is_ready && (
+                      <button 
+                        onClick={() => removePokemon(idx)}
+                        className="absolute -top-3 -right-3 bg-red-600 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md transition-transform hover:scale-110"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    {p.name}
+                  </div>
                 ))}
               </div>
               
