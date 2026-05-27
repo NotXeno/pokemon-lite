@@ -91,6 +91,7 @@ class PlayerState(BaseModel):
     is_ready : bool = False
     must_switch : bool = False
     last_used_move : str = ""
+    wants_rematch : bool = False
 
 class GameState(BaseModel): 
     game_id : str
@@ -313,6 +314,28 @@ def battle_websocket(ws, game_id, player_name):
 
                     manager.broadcast(game_id, {"type": "update", "state" : game.model_dump()})
 
+            # Rematch action
+            elif action == "rematch" and game.winner:
+                player = game.players[player_name]
+                player.wants_rematch = True
+                game.battle_log.append(f"> [{player_name}] wants a rematch!")
+
+                all_rematch = all(p.wants_rematch for p in game.players.values())
+                if len(game.players) == 2 and all_rematch:
+                    game.status = "selecting"
+                    game.winner = None
+                    game.current_turn = ""
+                    game.battle_log.append(f"> Both players agreed! Choose your new team.")
+                    for p in game.players.values():
+                        p.is_ready = False
+                        p.team = []
+                        p.active_pokemon_index = 0
+                        p.must_switch = False
+                        p.last_used_move = ""
+                        p.wants_rematch = False
+
+                manager.broadcast(game_id, {"type": "update", "state": game.model_dump()})
+
             # Switch action
             elif action == "switch" and game.status == "battling":
                 target_idx  = data.get("target_index")
@@ -440,6 +463,7 @@ def battle_websocket(ws, game_id, player_name):
                         p.active_pokemon_index = 0
                         p.must_switch = False
                         p.last_used_move = ""
+                        p.wants_rematch = False
 
                     save_game_state(game)
                     publish_update(game_id, {"type": "update", "state": game.model_dump()})
