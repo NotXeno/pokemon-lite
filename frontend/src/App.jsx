@@ -2,6 +2,7 @@ import {useState, useEffect, useRef} from 'react'
 
 function App() {
   const [pokemonList, setPokemonList] = useState([])
+  const [waitingRooms, setWaitingRooms] = useState([])
   const [roomInput, setRoomInput] = useState('')
   const [nameInput, setNameInput] = useState('')
   const [gameState, setGameState] = useState(null)
@@ -9,11 +10,26 @@ function App() {
   const ws = useRef(null)
   const logEndRef = useRef(null)
   
-  // Fetch Pokemon List from API on component mount
-  useEffect(() => {
+  // Fetch Pokemon List & Rooms from API on component mount
+  const fetchPokemon = () => {
     fetch('http://127.0.0.1:8000/api/pokemon')
       .then(res => res.json())
       .then(data => setPokemonList(data.data))
+      .catch(err => console.error("Could not fetch pokemon", err))
+  }
+
+  const fetchRooms = () => {
+    fetch('http://127.0.0.1:8000/api/rooms')
+      .then(res => res.json())
+      .then(data => setWaitingRooms(data.data))
+      .catch(err => console.error("Could not fetch waiting rooms", err))
+  }
+
+  useEffect(() => {
+    fetchPokemon()
+    fetchRooms()
+    const interval = setInterval(fetchRooms, 3000) // Poll rooms every 3 seconds
+    return () => clearInterval(interval)
   }, [])
 
   // Automatically scroll to the bottom of the battle log when it updates
@@ -130,6 +146,7 @@ function App() {
           />
 
           <input 
+            id="name-input"
             type="text" 
             placeholder="Player Name (e.g. Ash)" 
             value={nameInput} 
@@ -137,18 +154,62 @@ function App() {
             className="font-bold p-3 border-4 border-gray-300 rounded-xl w-full mb-6 text-center outline-none focus:border-red-500 focus:bg-red-50 transition-colors" 
           />
 
-          <button onClick={joinRoom} className="bg-yellow-400 hover:bg-yellow-300 border-4 border-gray-900 text-gray-900 font-black text-xl py-3 px-4 rounded-xl w-full transition-transform active:scale-95 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:translate-x-1">
+          <button onClick={joinRoom} className="bg-yellow-400 hover:bg-yellow-300 border-4 border-gray-900 text-gray-900 font-black text-xl py-3 px-4 rounded-xl w-full transition-transform active:scale-95 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:translate-x-1 mb-6">
             JOIN ROOM
           </button>
+
+          {/* Active Waiting Rooms */}
+          <div className="bg-gray-100 p-4 border-4 border-gray-300 rounded-xl max-h-48 overflow-y-auto">
+             <div className="flex justify-between items-center mb-2 pb-2 border-b-2 border-gray-300">
+               <h3 className="font-black text-gray-700">WAITING PLAYERS</h3>
+               <button onClick={fetchRooms} className="text-xs bg-gray-300 hover:bg-gray-400 px-2 py-1 rounded font-bold transition-colors">REFRESH</button>
+             </div>
+             {waitingRooms.length === 0 ? (
+                <p className="text-gray-500 font-bold text-sm py-4">No trainers waiting. Create a room!</p>
+             ) : (
+                <div className="flex flex-col gap-2">
+                   {waitingRooms.map((room, idx) => (
+                      <button 
+                        key={idx} 
+                        onClick={() => {
+                           setRoomInput(room.room_id)
+                           // Focus the name input automatically
+                           document.getElementById('name-input')?.focus()
+                        }}
+                        className="bg-white border-2 border-gray-400 hover:border-blue-500 hover:bg-blue-50 p-2 rounded-lg text-left flex justify-between items-center transition-colors group"
+                      >
+                         <div>
+                            <div className="text-xs text-gray-500 font-bold">Room: {room.room_id}</div>
+                            <div className="font-black text-gray-800">Host: {room.host}</div>
+                         </div>
+                         <div className="bg-blue-500 text-white text-[10px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">JOIN</div>
+                      </button>
+                   ))}
+                </div>
+             )}
+          </div>
         </div>
       </div>
     )
   }
 
   // Search my data and enemy from Object Dictionary Players 
-  const myState = gameState.players[nameInput]
-  const enemyName = Object.keys(gameState.players).find(name => name !== nameInput)
-  const enemyState = enemyName ? gameState.players[enemyName] : null
+  const isSpectator = !gameState.players.hasOwnProperty(nameInput)
+  
+  const myState = isSpectator ? null : gameState.players[nameInput]
+  let enemyName = null
+  let enemyState = null
+  let player1Name = null
+  let player2Name = null
+
+  const playerNames = Object.keys(gameState.players)
+  if (isSpectator) {
+     if (playerNames.length > 0) player1Name = playerNames[0]
+     if (playerNames.length > 1) player2Name = playerNames[1]
+  } else {
+     enemyName = playerNames.find(name => name !== nameInput)
+     enemyState = enemyName ? gameState.players[enemyName] : null
+  }
 
   // --- SCREEN 2: WAITING / SELECTING POKEMON ---
   if (gameState.status === 'waiting' || gameState.status === 'selecting') {
@@ -172,18 +233,19 @@ function App() {
             {gameState.status === 'waiting' ? (
               <p className="text-blue-600 animate-pulse">Waiting for challenger to appear...</p>
             ) : (
-              <p className="text-green-600">Choose 3 Pokémon for your team!</p>
+              <p className="text-green-600">{isSpectator ? "Players are choosing Pokémon!" : "Choose 3 Pokémon for your team!"}</p>
             )}
-            <p className="text-gray-500 mt-2 text-sm drop-shadow-sm">Player 1: <span className="text-gray-800">{nameInput}</span> VS Player 2: <span className="text-gray-800">{enemyName || '???'}</span></p>
+            <p className="text-gray-500 mt-2 text-sm drop-shadow-sm">Player 1: <span className="text-gray-800">{isSpectator ? (player1Name || '???') : nameInput}</span> VS Player 2: <span className="text-gray-800">{isSpectator ? (player2Name || '???') : (enemyName || '???')}</span></p>
           </div>
 
           {/* Choosing Pokemon */}
           {gameState.status === 'selecting' && (
-            <div className="flex flex-col lg:flex-row gap-8 mb-8">
+            <div className={`flex flex-col ${isSpectator ? 'items-center' : 'lg:flex-row'} gap-8 mb-8`}>
               
               {/* Slot Tim Kita */}
-              <div className="lg:w-1/3 bg-blue-50 p-6 rounded-xl border-4 border-blue-200 text-center">
-                <h2 className="text-xl font-black mb-4 text-blue-800">MY TEAM ({myState.team.length}/3)</h2>
+              <div className={`${isSpectator ? 'w-full max-w-sm' : 'lg:w-1/3'} bg-blue-50 p-6 rounded-xl border-4 border-blue-200 text-center`}>
+                <h2 className="text-xl font-black mb-4 text-blue-800">{isSpectator ? "SPECTATING..." : `${nameInput.toUpperCase()}'S TEAM (${myState.team.length}/3)`}</h2>
+                {!isSpectator && (
                 <div className="flex flex-col gap-4 mb-6">
                   {myState.team.map((p, idx) => (
                     <div key={idx} className="relative bg-white p-2 rounded-xl font-bold border-4 border-gray-900 shadow-[4px_4px_0px_rgba(0,0,0,0.2)] flex items-center gap-4">
@@ -210,8 +272,9 @@ function App() {
                      <div key={`empty-${i}`} className="bg-blue-100/50 p-4 rounded-xl border-4 border-dashed border-blue-300 h-20 flex items-center justify-center text-blue-300 font-bold">EMPTY SLOT</div>
                   ))}
                 </div>
+                )}
                 
-                {myState.team.length === 3 ? (
+                {!isSpectator && myState.team.length === 3 ? (
                   !myState.is_ready ? (
                     <button onClick={setReady} className="w-full bg-green-500 hover:bg-green-400 border-4 border-gray-900 text-white font-black py-4 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:-translate-x-1 hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] active:shadow-none transition-all">READY TO BATTLE!</button>
                   ) : (
@@ -221,8 +284,15 @@ function App() {
               </div>
 
               {/* Pokemon Selection List */}
-              <div className="lg:w-2/3">
-              {!myState.is_ready && myState.team.length < 3 && (
+              {!isSpectator && (
+                <div className="lg:w-2/3">
+                  {!myState.is_ready && myState.team.length < 3 && (
+                    pokemonList.length === 0 ? (
+                  <div className="bg-red-50 p-8 text-center border-4 border-red-400 rounded-xl">
+                    <p className="text-red-600 font-bold mb-4">Could not load Pokemon data! (Server may have restarted)</p>
+                    <button onClick={fetchPokemon} className="bg-white text-red-600 font-bold py-2 px-6 rounded-xl border-4 border-red-500 shadow-[4px_4px_0px_rgba(239,68,68,0.5)] active:translate-y-1 active:shadow-none transition-all">TRY AGAIN</button>
+                  </div>
+                ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {pokemonList.map((p) => (
                     <button key={p.id} onClick={() => selectPokemon(p.id)} className="bg-white hover:bg-gray-50 p-4 rounded-xl border-4 border-gray-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:translate-x-1 hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] text-center transition-all flex flex-col items-center group relative overflow-hidden">
@@ -246,8 +316,10 @@ function App() {
                     </button>
                   ))}
                 </div>
+                )
               )}
               </div>
+              )}
             </div>
           )}
 
@@ -265,9 +337,16 @@ function App() {
   }
 
   // --- SCREEN 3: BATTLE ARENA ---
-  const isMyTurn = gameState.current_turn === nameInput
-  const myActivePoke = myState.team[myState.active_pokemon_index]
-  const enemyActivePoke = enemyState.team[enemyState.active_pokemon_index]
+  const isMyTurn = !isSpectator && gameState.current_turn === nameInput
+  
+  // If spectator, treat player 1 as "leftActivePoke" visually and player 2 as "rightActivePoke" visually
+  const leftPlayer = isSpectator ? gameState.players[player1Name] : myState
+  const rightPlayer = isSpectator ? gameState.players[player2Name] : enemyState
+  const leftName = isSpectator ? player1Name : nameInput
+  const rightName = isSpectator ? player2Name : enemyName
+
+  const leftActivePoke = leftPlayer?.team[leftPlayer.active_pokemon_index]
+  const rightActivePoke = rightPlayer?.team[rightPlayer.active_pokemon_index]
 
   // HP Color Helper
   const getHpColor = (hp, maxHp) => {
@@ -285,7 +364,11 @@ function App() {
             <div className="bg-white border-8 border-gray-900 rounded-2xl p-8 max-w-lg w-full text-center shadow-2xl animate-[bounce_0.5s_ease-out]">
             <h2 className="text-4xl font-black mb-4 text-gray-800">BATTLE FINISHED!</h2>
             <p className="text-2xl font-bold text-green-600 mb-8 font-mono">{gameState.winner.toUpperCase()} WINS!</p>
-            {myState.wants_rematch ? (
+            {isSpectator ? (
+                <div className="flex gap-4 justify-center">
+                    <button onClick={leaveRoom} className="flex-1 bg-red-500 hover:bg-red-400 font-black border-4 border-gray-900 py-3 px-2 rounded-xl text-white shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-1 active:shadow-none transition-all">LEAVE</button>
+                </div>
+            ) : myState.wants_rematch ? (
                 <div className="bg-yellow-100 border-4 border-yellow-400 text-yellow-700 font-bold py-3 px-6 rounded-xl animate-pulse">Waiting for {enemyName}...</div>
             ) : (
                 <div className="flex gap-4 justify-center">
@@ -298,11 +381,11 @@ function App() {
       ) : null}
 
       {/* Action / Leave header */}
-      <div className="flex justify-between items-center w-full max-w-4xl mx-auto mb-4 bg-white/50 p-2 rounded-xl border-4 border-gray-900 backdrop-blur-sm shadow-md z-40 relative">
-         <span className="font-black text-gray-800 tracking-wider">ROOM: {gameState.game_id.toUpperCase()}</span>
+      <div className="flex flex-wrap md:flex-nowrap justify-between items-center w-full max-w-4xl mx-auto mb-4 bg-white/50 p-2 md:p-3 rounded-xl border-4 border-gray-900 backdrop-blur-sm shadow-md z-40 relative gap-2">
+         <span className="font-black text-gray-800 tracking-wider text-sm md:text-base">ROOM: {gameState.game_id.toUpperCase()}</span>
          
-         {/* Type Chart Hint */}
-         <div className="hidden md:flex gap-1 text-[10px] items-center bg-white px-2 py-1 border-2 border-gray-900 rounded font-bold">
+         {/* Type Chart Hint Default */}
+         <div className="hidden lg:flex gap-1 text-[10px] xl:text-xs items-center bg-white px-2 py-1 border-2 border-gray-900 rounded font-bold">
             <span className="text-gray-500 mr-1">TIPS:</span>
             <span className="text-blue-600">WATER&gt;FIRE</span>
             <span>|</span>
@@ -315,61 +398,70 @@ function App() {
             <span className="text-yellow-500">ELEC&gt;WATER</span>
          </div>
          
-         <button onClick={leaveRoom} className="bg-white text-red-600 font-bold py-1 px-4 rounded-lg border-2 border-gray-900 hover:bg-gray-100 shadow-[2px_2px_0px_rgba(0,0,0,1)]">RUN AWAY</button>
+         {/* Type Chart Hint Mobile */}
+         <div className="lg:hidden flex order-last w-full justify-center gap-2 text-[9px] sm:text-[10px] items-center bg-white px-1 py-1 border-2 border-gray-900 rounded font-bold">
+            <span className="text-blue-600">WTR&gt;FIR</span>
+            <span className="text-red-500">FIR&gt;GRA</span>
+            <span className="text-green-600">GRA&gt;WTR</span>
+            <span className="text-yellow-600">GND&gt;ELE</span>
+            <span className="text-yellow-500">ELE&gt;WTR</span>
+         </div>
+         
+         <button onClick={leaveRoom} className="bg-white text-red-600 text-xs md:text-base font-bold py-1 px-3 md:px-4 rounded-lg border-2 border-gray-900 hover:bg-gray-100 shadow-[2px_2px_0px_rgba(0,0,0,1)] whitespace-nowrap">RUN AWAY</button>
       </div>
 
       {/* Battle Scene */}
-      <div className="flex-1 w-full max-w-4xl mx-auto relative flex flex-col justify-center py-4 lg:py-8">
+      <div className="flex-1 w-full max-w-4xl mx-auto relative flex flex-col justify-center py-4 lg:py-8 overflow-hidden md:overflow-visible">
         
-        {/* Enemy Status & Image (Top / Right) */}
-        <div className="flex flex-col md:flex-row justify-end items-end md:items-start w-full relative mb-12 pl-4 gap-4">
+        {/* Enemy Status & Image (Top) */}
+        <div className="flex justify-between items-start w-full relative mb-4 md:mb-12">
             
             {/* Enemy HP Box */}
-            <div className="bg-white border-4 border-gray-900 p-3 lg:p-4 rounded-xl shadow-[6px_6px_0px_rgba(0,0,0,0.5)] w-64 md:w-80 relative z-10 md:mt-12 order-2 md:order-1 self-end md:self-start">
+            <div className="bg-white border-4 border-gray-900 p-2 md:p-4 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-48 md:w-80 relative z-20 self-start">
                 <div className="flex justify-between items-baseline mb-1">
-                    <h2 className="text-xl font-black text-gray-800 uppercase">{enemyActivePoke.name}</h2>
-                    <span className="text-sm font-bold text-gray-600">Lv50</span>
+                    <h2 className="text-sm md:text-xl font-black text-gray-800 uppercase">{rightActivePoke.name}</h2>
+                    <span className="text-[10px] md:text-sm font-bold text-gray-600">Lv50</span>
                 </div>
                 {/* HP Bar Container */}
-                <div className="bg-gray-800 p-1 rounded-full border-2 border-gray-700 w-full flex items-center pr-2">
-                    <span className="text-yellow-400 font-black text-xs mr-2 ml-1">HP</span>
-                    <div className="w-full bg-gray-600 rounded-full h-3">
-                        <div className={`${getHpColor(enemyActivePoke.hp, enemyActivePoke.max_hp)} h-3 rounded-full transition-all duration-500`} style={{ width: `${Math.max(0, (enemyActivePoke.hp / enemyActivePoke.max_hp) * 100)}%` }}></div>
+                <div className="bg-gray-800 p-1 rounded-full border-2 border-gray-700 w-full flex items-center pr-1 md:pr-2">
+                    <span className="text-yellow-400 font-black text-[8px] md:text-xs mr-1 md:mr-2 ml-1">HP</span>
+                    <div className="w-full bg-gray-600 rounded-full h-2 md:h-3">
+                        <div className={`${getHpColor(rightActivePoke.hp, rightActivePoke.max_hp)} h-2 md:h-3 rounded-full transition-all duration-500`} style={{ width: `${Math.max(0, (rightActivePoke.hp / rightActivePoke.max_hp) * 100)}%` }}></div>
                     </div>
                 </div>
             </div>
 
             {/* Enemy Image */}
-            <div className="relative w-48 h-48 md:w-56 md:h-56 z-0 order-1 md:order-2 self-end">
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-32 h-10 bg-black/20 rounded-[100%]"></div>
-                <img src={`/pokemon-images/${getPokeImg(enemyActivePoke.name, enemyActivePoke.hp > 0 ? 'active' : 'fainted')}`} alt={enemyActivePoke.name} className={`absolute bottom-8 left-1/2 -translate-x-1/2 max-h-full max-w-full drop-shadow-xl z-10 ${enemyActivePoke.hp > 0 ? 'animate-[bounce_2s_infinite] scale-x-[-1]' : 'scale-x-[-1] translate-y-8 brightness-50 sepia-[.5]'}`} onError={(e) => { e.target.style.display = 'none'; }} />
+            <div className="relative w-32 h-32 md:w-56 md:h-56 z-10 -mb-4 md:-mb-12 mr-2 md:mr-8 flex-shrink-0">
+                <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 w-20 md:w-32 h-6 md:h-10 bg-black/20 rounded-[100%]"></div>
+                <img src={`/pokemon-images/${getPokeImg(rightActivePoke.name, rightActivePoke.hp > 0 ? 'active' : 'fainted')}`} alt={rightActivePoke.name} className={`absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 min-w-[120%] drop-shadow-xl z-20 object-contain ${rightActivePoke.hp > 0 ? 'animate-[bounce_2s_infinite] scale-x-[-1]' : 'scale-x-[-1] translate-y-8 brightness-50 sepia-[.5]'}`} onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
 
         </div>
 
-        {/* Player Status & Image (Bottom / Left) */}
-        <div className="flex flex-col md:flex-row justify-start items-end w-full relative pr-4 gap-4 pb-8">
+        {/* Player Status & Image (Bottom) */}
+        <div className="flex justify-between items-end w-full relative pb-4 md:pb-8 mt-4 md:mt-24">
             
             {/* Player Image */}
-            <div className="relative w-48 h-48 md:w-56 md:h-56 z-10 self-start md:self-end">
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-40 h-10 bg-black/20 rounded-[100%]"></div>
-                <img src={`/pokemon-images/${getPokeImg(myActivePoke.name, myActivePoke.hp > 0 ? 'active' : 'fainted')}`} alt={myActivePoke.name} className={`absolute bottom-8 left-1/2 -translate-x-1/2 max-h-full max-w-full drop-shadow-2xl z-20 ${myActivePoke.hp > 0 ? '' : 'translate-y-8 brightness-50 sepia-[.5]'}`} onError={(e) => { e.target.style.display = 'none'; }} />
+            <div className="relative w-32 h-32 md:w-56 md:h-56 z-10 self-end -mb-4 md:mb-8 ml-4 md:ml-8 flex-shrink-0">
+                <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 w-24 md:w-40 h-6 md:h-10 bg-black/20 rounded-[100%]"></div>
+                <img src={`/pokemon-images/${getPokeImg(leftActivePoke.name, leftActivePoke.hp > 0 ? 'active' : 'fainted')}`} alt={leftActivePoke.name} className={`absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 min-w-[120%] drop-shadow-2xl z-20 object-contain ${leftActivePoke.hp > 0 ? '' : 'translate-y-8 brightness-50 sepia-[.5]'}`} onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
 
             {/* Player HP Box */}
-            <div className="bg-white border-4 border-gray-900 p-3 lg:p-4 rounded-xl shadow-[6px_6px_0px_rgba(0,0,0,0.5)] w-64 md:w-80 relative z-30 md:-mt-12 self-end">
+            <div className="bg-white border-4 border-gray-900 p-2 md:p-4 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-48 md:w-80 relative z-30 self-end">
                 <div className="flex justify-between items-baseline mb-1">
-                    <h2 className="text-xl font-black text-gray-800 uppercase">{myActivePoke.name}</h2>
-                    <span className="text-sm font-bold text-gray-600">Lv50</span>
+                    <h2 className="text-sm md:text-xl font-black text-gray-800 uppercase">{leftActivePoke.name}</h2>
+                    <span className="text-[10px] md:text-sm font-bold text-gray-600">Lv50</span>
                 </div>
                 {/* HP Bar Container */}
-                <div className="bg-gray-800 p-1 rounded-full border-2 border-gray-700 w-full flex items-center pr-2 mb-1">
-                    <span className="text-yellow-400 font-black text-xs mr-2 ml-1">HP</span>
-                    <div className="w-full bg-gray-600 rounded-full h-3">
-                        <div className={`${getHpColor(myActivePoke.hp, myActivePoke.max_hp)} h-3 rounded-full transition-all duration-500`} style={{ width: `${Math.max(0, (myActivePoke.hp / myActivePoke.max_hp) * 100)}%` }}></div>
+                <div className="bg-gray-800 p-1 rounded-full border-2 border-gray-700 w-full flex items-center pr-1 md:pr-2 mb-1">
+                    <span className="text-yellow-400 font-black text-[8px] md:text-xs mr-1 md:mr-2 ml-1">HP</span>
+                    <div className="w-full bg-gray-600 rounded-full h-2 md:h-3">
+                        <div className={`${getHpColor(leftActivePoke.hp, leftActivePoke.max_hp)} h-2 md:h-3 rounded-full transition-all duration-500`} style={{ width: `${Math.max(0, (leftActivePoke.hp / leftActivePoke.max_hp) * 100)}%` }}></div>
                     </div>
                 </div>
-                <div className="text-right font-black text-gray-700">{myActivePoke.hp} / {myActivePoke.max_hp}</div>
+                <div className="text-right font-black text-gray-700 text-[10px] md:text-sm">{leftActivePoke.hp} / {leftActivePoke.max_hp}</div>
             </div>
             
         </div>
@@ -388,14 +480,23 @@ function App() {
            {/* Turn Status Overlay indicator */}
            {!gameState.winner && (
              <div className="mt-4 inline-block font-black text-sm p-1 px-3 border-2 border-gray-900 rounded bg-white shadow-sm self-start">
-               {isMyTurn ? (myState.must_switch ? <span className="text-red-500 animate-pulse">MUST SWITCH POKEMON!</span> : <span className="text-green-600">WHAT WILL {myActivePoke.name.toUpperCase()} DO?</span>) : <span className="text-gray-500">WAITING FOR {enemyName.toUpperCase()}...</span>}
+               {isSpectator ? (
+                 <span className="text-blue-500 animate-pulse">SPECTATING {gameState.current_turn.toUpperCase()}'S TURN...</span>
+               ) : (
+                 isMyTurn ? (myState.must_switch ? <span className="text-red-500 animate-pulse">MUST SWITCH POKEMON!</span> : <span className="text-green-600">WHAT WILL {leftActivePoke.name.toUpperCase()} DO?</span>) : <span className="text-gray-500">WAITING FOR {enemyName.toUpperCase()}...</span>
+               )}
              </div>
            )}
         </div>
 
         {/* Action Controls */}
         <div className="bg-gray-200 w-full md:w-2/5 xl:w-[400px]">
-           {myState.must_switch ? (
+           {isSpectator ? (
+             <div className="p-4 flex flex-col items-center justify-center h-full bg-gray-300 text-gray-500 font-black border-l-4 border-gray-400">
+               <div>SPECTATOR MODE</div>
+               <div className="text-xs mt-1">Actions Disabled</div>
+             </div>
+           ) : myState.must_switch ? (
              <div className="p-4 grid grid-cols-1 gap-2 h-full bg-red-100">
                <h3 className="font-bold text-red-600 text-center mb-2">CHOOSE REPLACEMENT</h3>
                <div className="flex gap-2 justify-center">
@@ -417,7 +518,7 @@ function App() {
              </div>
            ) : (
             <div className="p-2 grid grid-cols-2 gap-2 h-full content-center bg-white md:bg-gray-200">
-              {myActivePoke.moves.map((move, idx) => {
+              {leftActivePoke.moves.map((move, idx) => {
                  let typeColor = 'bg-gray-100';
                  if(move.element_type==='Fire') typeColor='bg-red-400 text-white';
                  if(move.element_type==='Water') typeColor='bg-blue-400 text-white';
@@ -430,9 +531,14 @@ function App() {
                     key={idx} 
                     onClick={() => sendMove(move.name)}
                     disabled={!isMyTurn || gameState.winner || move.name === myState.last_used_move}
-                    className={`relative p-3 border-4 border-gray-900 rounded-xl font-black text-sm md:text-sm lg:text-base transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 hover:shadow-[0px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50 disabled:cursor-not-allowed ${typeColor}`}
+                    className={`relative p-2 flex flex-col items-center justify-center border-4 border-gray-900 rounded-xl transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 hover:shadow-[0px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50 disabled:cursor-not-allowed ${typeColor}`}
                   >
-                    {move.name.toUpperCase()}
+                    <span className="font-black text-xs sm:text-sm lg:text-base leading-tight">{move.name.toUpperCase()}</span>
+                    {move.is_heal ? (
+                        <span className="text-[9px] sm:text-[10px] font-black mt-1 bg-green-500 text-white px-2 py-0.5 rounded-full border border-gray-900 shadow-[1px_1px_0px_rgba(0,0,0,1)] leading-none">HEAL +{move.power}</span>
+                    ) : (
+                        <span className="text-[9px] sm:text-[10px] font-black mt-1 opacity-70 leading-none">PWR {move.power}</span>
+                    )}
                   </button>
                  )
               })}

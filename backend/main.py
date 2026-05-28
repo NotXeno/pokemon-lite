@@ -200,6 +200,23 @@ def calculate_damage(attacker: Pokemon, defender: Pokemon, move: Move):
 def get_all_pokemon() : 
     return jsonify({"data" : [p.model_dump() for p in POKEMON_DB.values()]})
 
+@app.route("/api/rooms")
+def get_waiting_rooms() : 
+    keys = redis_client.keys("room:*")
+    waiting_rooms = []
+    for key in keys:
+        game_data = redis_client.get(key)
+        if game_data:
+            game = GameState.model_validate_json(game_data)
+            room_id = game.game_id
+            players = list(game.players.keys())
+            if len(players) == 1 and game.status == "waiting":
+                waiting_rooms.append({
+                    "room_id": room_id,
+                    "host": players[0]
+                })
+    return jsonify({"data": waiting_rooms})
+
 # --- Websocket Connection Manager & Game Logic ---
 class ConnectionManager: 
     def __init__(self):
@@ -240,14 +257,15 @@ def battle_websocket(ws, game_id, player_name):
 
     if player_name not in game.players:
         if len(game.players) >= 2:
-            ws.send(json.dumps({"type" : "error", "message" : "Room is full"}))
-            manager.disconnect(ws, game_id)
-            return
-
-        game.players[player_name] = PlayerState(player_name=player_name)
-        game.battle_log.append(f"{player_name} has joined the room!")
-
-        save_game_state(game)
+            # Join as spectator
+            ws.send(json.dumps({"type" : "update", "state" : game.model_dump()}))
+            game.battle_log.append(f"👀 {player_name} is spectating the battle!")
+            save_game_state(game)
+            publish_update(game_id, {"type" : "update", "state" : game.model_dump()})
+        else:
+            game.players[player_name] = PlayerState(player_name=player_name)
+            game.battle_log.append(f"{player_name} has joined the room!")
+            save_game_state(game)
 
     if len(game.players) == 2 and game.status == "waiting":
         game.status = "selecting"
@@ -268,6 +286,7 @@ def battle_websocket(ws, game_id, player_name):
             game = get_game_state(game_id)
 
             if not game : continue
+            if player_name not in game.players: continue
 
             if action == "select_pokemon" and game.status == "selecting": 
                 poke_id = data.get("pokemon_id")
