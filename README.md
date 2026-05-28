@@ -32,7 +32,7 @@ Click the green **"<> Code"** button at the top right of this repository page, t
 **Requirement:** Make sure you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed on your computer.
 
 1. Open your terminal and go to the project folder:
-   ```bash
+```bash
 cd pokemon-lite
 ```
 2. Make sure the IP addresses in `frontend/src/App.jsx` are set to `127.0.0.1` for the `fetch` and `WebSocket` connections.
