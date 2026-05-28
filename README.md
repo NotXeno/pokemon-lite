@@ -37,7 +37,7 @@ cd pokemon-lite
 ```
 2. Make sure the IP addresses in `frontend/src/App.jsx` are set to `127.0.0.1` for the `fetch` and `WebSocket` connections.
 3. Start all containers using Docker Compose:
-   ```bash
+```bash
 docker compose up -d --build
 ```
 4. Open your browser and go to: `http://localhost:5173`
@@ -49,13 +49,13 @@ docker compose up -d --build
 1. Create a VM Instance (e2-medium specs with 4GB RAM is recommended) and use Ubuntu OS.
 2. Open ports **5173** and **8000** in your server's Firewall rules.
 3. Open the server's SSH terminal and install Git and Docker:
-   ```bash
+```bash
    sudo apt update && sudo apt install git docker.io docker-compose-v2 -y
 ```
 4. Clone this repository into the server.
 5. **Important:** Open `frontend/src/App.jsx` using `nano` and change all `127.0.0.1` addresses to your server's **Public IP (External IP)**.
 6. Run Docker Compose:
-   ```bash
+```bash
 sudo docker compose up -d --build
 ```
 7. Play the game via browser using your server's IP: `http://<YOUR_SERVER_PUBLIC_IP>:5173`
