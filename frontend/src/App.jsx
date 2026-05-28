@@ -43,7 +43,7 @@ function App() {
     // Only play audio if we are in the battle arena
     // Meaning two players are fully ready
     if (audioRef.current) {
-        if (gameState && gameState.status === 'battle') {
+        if (gameState && gameState.status === 'battling') {
             audioRef.current.play().catch(e => console.log("Audio autoplay prevented"));
         } else {
             audioRef.current.pause();
