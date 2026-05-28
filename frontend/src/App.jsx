@@ -6,6 +6,8 @@ function App() {
   const [roomInput, setRoomInput] = useState('')
   const [nameInput, setNameInput] = useState('')
   const [gameState, setGameState] = useState(null)
+  const [showHowToPlay, setShowHowToPlay] = useState(true)
+  const audioRef = useRef(null)
 
   const ws = useRef(null)
   const logEndRef = useRef(null)
@@ -36,6 +38,19 @@ function App() {
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [gameState?.battle_log])
+
+  useEffect(() => {
+    // Only play audio if we are in the battle arena
+    // Meaning two players are fully ready
+    if (audioRef.current) {
+        if (gameState && gameState.status === 'battle') {
+            audioRef.current.play().catch(e => console.log("Audio autoplay prevented"));
+        } else {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+    }
+  }, [gameState?.status])
 
   // Join the Room function
   const joinRoom = () => {
@@ -131,6 +146,37 @@ function App() {
         <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-gray-900 rounded-full -translate-x-1/2 -translate-y-1/2 z-0 flex items-center justify-center">
             <div className="w-20 h-20 bg-white rounded-full border-8 border-gray-900"></div>
         </div>
+
+        {/* How to Play Manual Button */}
+        <button onClick={() => setShowHowToPlay(true)} className="absolute top-4 right-4 z-20 bg-white hover:bg-gray-100 p-2 px-4 rounded-xl border-4 border-gray-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:translate-x-1 hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] active:shadow-none transition-all font-black text-gray-800">
+          HOW TO PLAY?
+        </button>
+
+        {/* How to Play Modal */}
+        {showHowToPlay && (
+          <div className="absolute inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <div className="bg-white border-8 border-gray-900 rounded-2xl p-6 md:p-8 max-w-lg w-full shadow-2xl animate-[bounce_0.5s_ease-out] relative">
+              <h2 className="text-3xl font-black mb-4 text-gray-800 text-center">HOW TO PLAY</h2>
+              <div className="text-gray-700 font-bold flex flex-col gap-3 mb-6 text-sm md:text-base text-left">
+                <p>1. Enter a <span className="text-blue-600 border px-1 rounded border-blue-600 bg-blue-50">ROOM ID</span> and your <span className="text-red-500 border px-1 rounded border-red-500 bg-red-50">NAME</span> and click Join.</p>
+                <p>2. Select exactly <strong>3 POKÉMON</strong> to form your squad.</p>
+                <p>3. Wait for the opponent to be ready.</p>
+                <p>4. Take turns battling! <span className="text-red-600 bg-red-100 border border-red-300 px-1 rounded text-xs align-middle">RULE:</span> You only pick 1 move per turn, and <strong>you cannot use the exact same move twice in a row!</strong></p>
+                <p>5. Use logic and elements to your advantage:</p>
+                <div className="bg-gray-100 p-3 rounded-xl border-2 border-gray-300 flex flex-col gap-1 text-center text-xs md:text-sm shadow-inner">
+                  <p><span className="text-blue-500">WATER</span> beats <span className="text-red-500">FIRE</span></p>
+                  <p><span className="text-red-500">FIRE</span> beats <span className="text-green-500">GRASS</span></p>
+                  <p><span className="text-green-500">GRASS</span> beats <span className="text-blue-500">WATER</span></p>
+                  <p><span className="text-yellow-600">GROUND</span> beats <span className="text-yellow-500">ELECTRIC</span></p>
+                  <p><span className="text-yellow-500">ELECTRIC</span> beats <span className="text-blue-500">WATER</span></p>
+                </div>
+              </div>
+              <button onClick={() => setShowHowToPlay(false)} className="w-full bg-green-500 hover:bg-green-400 border-4 border-gray-900 text-white font-black text-xl py-3 px-4 rounded-xl transition-transform active:scale-95 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:translate-x-1">
+                GOT IT!
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="max-w-md w-full bg-white p-8 rounded-2xl border-4 border-gray-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] z-10 text-center"> 
           <h1 className ="text-5xl font-black mb-2 text-red-600 tracking-tighter drop-shadow-md">POKÉMON</h1>
@@ -357,7 +403,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-300 to-green-400 font-mono p-4 md:p-8 flex flex-col justify-between">
+    <div className="min-h-screen bg-gradient-to-b from-blue-300 to-green-400 font-mono p-4 md:p-8 flex flex-col justify-between overflow-hidden">
       {/* Header and status overlay */}
       {gameState.winner ? (
         <div className="absolute inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
@@ -410,14 +456,16 @@ function App() {
          <button onClick={leaveRoom} className="bg-white text-red-600 text-xs md:text-base font-bold py-1 px-3 md:px-4 rounded-lg border-2 border-gray-900 hover:bg-gray-100 shadow-[2px_2px_0px_rgba(0,0,0,1)] whitespace-nowrap">RUN AWAY</button>
       </div>
 
-      {/* Battle Scene */}
-      <div className="flex-1 w-full max-w-4xl mx-auto relative flex flex-col justify-center py-4 lg:py-8 overflow-hidden md:overflow-visible">
-        
-        {/* Enemy Status & Image (Top) */}
+      {/* Top Section Layout Wrapper */}
+      <div className="flex-1 w-full max-w-4xl mx-auto relative flex flex-col md:flex-row py-4 lg:py-8 overflow-hidden md:overflow-visible gap-8">
+          {/* Battle Scene */}
+          <div className="flex-1 w-full relative flex flex-col justify-center">
+            
+            {/* Enemy Status & Image (Top) */}
         <div className="flex justify-between items-start w-full relative mb-4 md:mb-12">
             
             {/* Enemy HP Box */}
-            <div className="bg-white border-4 border-gray-900 p-2 md:p-4 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-48 md:w-80 relative z-20 self-start">
+            <div className="bg-white border-4 border-gray-900 p-2 md:p-3 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-48 md:w-64 lg:w-72 relative z-20 self-start">
                 <div className="flex justify-between items-baseline mb-1">
                     <h2 className="text-sm md:text-xl font-black text-gray-800 uppercase">{rightActivePoke.name}</h2>
                     <span className="text-[10px] md:text-sm font-bold text-gray-600">Lv50</span>
@@ -432,8 +480,8 @@ function App() {
             </div>
 
             {/* Enemy Image */}
-            <div className="relative w-32 h-32 md:w-56 md:h-56 z-10 -mb-4 md:-mb-12 mr-2 md:mr-8 flex-shrink-0">
-                <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 w-20 md:w-32 h-6 md:h-10 bg-black/20 rounded-[100%]"></div>
+            <div className="relative w-32 h-32 md:w-48 lg:w-56 md:h-48 lg:h-56 z-10 -mb-4 md:-mb-12 mr-2 md:mr-8 flex-shrink-0">
+                <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 w-20 md:w-28 lg:w-32 h-6 md:h-8 lg:h-10 bg-black/20 rounded-[100%]"></div>
                 <img src={`/pokemon-images/${getPokeImg(rightActivePoke.name, rightActivePoke.hp > 0 ? 'active' : 'fainted')}`} alt={rightActivePoke.name} className={`absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 min-w-[120%] drop-shadow-xl z-20 object-contain ${rightActivePoke.hp > 0 ? 'animate-[bounce_2s_infinite] scale-x-[-1]' : 'scale-x-[-1] translate-y-8 brightness-50 sepia-[.5]'}`} onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
 
@@ -443,13 +491,13 @@ function App() {
         <div className="flex justify-between items-end w-full relative pb-4 md:pb-8 mt-4 md:mt-24">
             
             {/* Player Image */}
-            <div className="relative w-32 h-32 md:w-56 md:h-56 z-10 self-end -mb-4 md:mb-8 ml-4 md:ml-8 flex-shrink-0">
-                <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 w-24 md:w-40 h-6 md:h-10 bg-black/20 rounded-[100%]"></div>
+            <div className="relative w-32 h-32 md:w-48 lg:w-56 md:h-48 lg:h-56 z-10 self-end -mb-4 md:mb-8 ml-4 md:ml-8 flex-shrink-0">
+                <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 w-24 md:w-36 lg:w-40 h-6 md:h-8 lg:h-10 bg-black/20 rounded-[100%]"></div>
                 <img src={`/pokemon-images/${getPokeImg(leftActivePoke.name, leftActivePoke.hp > 0 ? 'active' : 'fainted')}`} alt={leftActivePoke.name} className={`absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 min-w-[120%] drop-shadow-2xl z-20 object-contain ${leftActivePoke.hp > 0 ? '' : 'translate-y-8 brightness-50 sepia-[.5]'}`} onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
 
             {/* Player HP Box */}
-            <div className="bg-white border-4 border-gray-900 p-2 md:p-4 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-48 md:w-80 relative z-30 self-end">
+            <div className="bg-white border-4 border-gray-900 p-2 md:p-3 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-48 md:w-64 lg:w-72 relative z-30 self-end">
                 <div className="flex justify-between items-baseline mb-1">
                     <h2 className="text-sm md:text-xl font-black text-gray-800 uppercase">{leftActivePoke.name}</h2>
                     <span className="text-[10px] md:text-sm font-bold text-gray-600">Lv50</span>
@@ -463,20 +511,23 @@ function App() {
                 </div>
                 <div className="text-right font-black text-gray-700 text-[10px] md:text-sm">{leftActivePoke.hp} / {leftActivePoke.max_hp}</div>
             </div>
-            
+
         </div>
+        </div>
+
       </div>
 
       {/* Dialog Box / Controls (Bottom) */}
-      <div className="w-full max-w-4xl mx-auto border-8 border-gray-900 rounded-2xl bg-white flex flex-col md:flex-row overflow-hidden shadow-[0_10px_20px_rgba(0,0,0,0.3)] z-40 relative">
+      <div className="w-full max-w-6xl mx-auto border-8 border-gray-900 rounded-2xl bg-white flex flex-col md:flex-row overflow-hidden shadow-[0_10px_20px_rgba(0,0,0,0.3)] z-40 relative">
         
         {/* Game Log Dialog Area */}
         <div className="p-4 md:p-6 flex-1 bg-gray-100 border-b-4 md:border-b-0 md:border-r-8 border-gray-900 min-h-[120px] flex flex-col justify-end">
-           {gameState.battle_log.slice(-2).map((log, i) => (
-             <p key={i} className="text-lg md:text-xl font-bold text-gray-800 leading-snug">
+           {gameState.battle_log.slice(-3).map((log, i) => (
+             <p key={i} className="text-lg md:text-xl font-bold text-gray-800 leading-snug mb-1">
                {log.replace('> ', '').replace('>', '')}
              </p>
            ))}
+
            {/* Turn Status Overlay indicator */}
            {!gameState.winner && (
              <div className="mt-4 inline-block font-black text-sm p-1 px-3 border-2 border-gray-900 rounded bg-white shadow-sm self-start">
@@ -560,6 +611,9 @@ function App() {
            )}
         </div>
       </div>
+      
+      {/* Background Music Audio Element */}
+      <audio ref={audioRef} loop src="/audio/battle.mp3" />
     </div>
   )
 }
