@@ -1,72 +1,88 @@
 let audioCtx = null;
-let sfxVolume = 1.0; // Global multiplier for SFX
+let masterGain = null;
+let sfxVolume = 1.0;
 
 export const setSfxVolume = (vol) => {
     sfxVolume = Math.max(0, Math.min(1, vol));
+    if (masterGain && audioCtx) {
+        masterGain.gain.setTargetAtTime(sfxVolume, audioCtx.currentTime, 0.05);
+    }
 }
 
 export const initAudio = () => {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = sfxVolume;
+        masterGain.connect(audioCtx.destination);
     }
     if (audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
 }
 
-// Helper to play simple oscillator tones
 const playTone = (freq, type, duration, vol = 0.1, slideTo = null, delay = 0) => {
+    initAudio();
     if (!audioCtx || sfxVolume === 0) return;
+    
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = type;
     
+    osc.type = type;
     const startTime = audioCtx.currentTime + delay;
+    const endTime = startTime + duration;
+
     osc.frequency.setValueAtTime(freq, startTime);
     if (slideTo) {
-        osc.frequency.exponentialRampToValueAtTime(slideTo, startTime + duration);
+        osc.frequency.exponentialRampToValueAtTime(slideTo, endTime);
     }
     
-    const finalVol = vol * sfxVolume;
-    gain.gain.setValueAtTime(finalVol, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, endTime);
     
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(masterGain);
+    
     osc.start(startTime);
-    osc.stop(startTime + duration);
+    osc.stop(endTime + 0.1);
 }
 
-// Helper to play white noise (for hits, fire, grass)
 const playNoise = (duration, vol = 0.1, filterFreq = null, delay = 0) => {
+    initAudio();
     if (!audioCtx || sfxVolume === 0) return;
+
     const bufferSize = audioCtx.sampleRate * duration;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
         data[i] = Math.random() * 2 - 1;
     }
+
     const noise = audioCtx.createBufferSource();
     noise.buffer = buffer;
     
     const gain = audioCtx.createGain();
     const startTime = audioCtx.currentTime + delay;
-    const finalVol = vol * sfxVolume;
-    gain.gain.setValueAtTime(finalVol, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+    const endTime = startTime + duration;
+
+    gain.gain.setValueAtTime(vol, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, endTime);
     
+    let lastNode = noise;
     if (filterFreq) {
         const filter = audioCtx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.value = filterFreq;
-        noise.connect(filter);
-        filter.connect(gain);
-    } else {
-        noise.connect(gain);
+        lastNode.connect(filter);
+        lastNode = filter;
     }
     
-    gain.connect(audioCtx.destination);
+    lastNode.connect(gain);
+    gain.connect(masterGain);
+    
     noise.start(startTime);
+    noise.stop(endTime + 0.1);
 }
 
 // UI Sounds
