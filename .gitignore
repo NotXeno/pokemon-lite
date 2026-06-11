@@ -39,3 +39,5 @@ yarn-error.log*
 # Mengabaikan file sistem operasi
 .DS_Store
 Thumbs.db
+
+Gemini/
