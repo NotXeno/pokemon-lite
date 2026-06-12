@@ -1,14 +1,19 @@
-const getPokeImg = (name, state) => {
-    const map = {
-        'pikacu': { active: 'Pikachu-active.png', fainted: 'Pikachu-fainted.webp' },
-        'bulba': { active: 'Bulbasaur-active.png', fainted: 'Bulbasaur-fainted.jpg' },
-        'charma': { active: 'Charmander-active.png', fainted: 'Charmander-fainted.jpg' },
-        'skurtle': { active: 'Squirtle-active.png', fainted: 'Squirtle-fainted.jpg' },
-        'digtil': { active: 'Diglett-active.png', fainted: 'Diglett-fainted.webp' }
-    };
+const getPokeImg = (name, state, side = 'front') => {
     const lower = (name || '').toLowerCase();
-    if (!map[lower]) return `${lower}-${state}.png`;
-    return map[lower][state];
+
+    if (state === 'active') {
+        return `Sprites/${lower}-${side}.gif`;
+    }
+
+    const fileMap = {
+        'pikacu': { fainted: 'Pikachu-fainted.webp' },
+        'bulba': { fainted: 'Bulbasaur-fainted.jpg' },
+        'charma': { fainted: 'Charmander-fainted.jpg' },
+        'skurtle': { fainted: 'Squirtle-fainted.jpg' },
+        'digtil': { fainted: 'Diglett-fainted.webp' }
+    };
+    
+    return fileMap[lower] ? fileMap[lower].fainted : `${lower}-fainted.png`;
 };
 
 export default function SelectionScreen({ 

@@ -1,16 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 
-const getPokeImg = (name, state) => {
-    const map = {
-        'pikacu': { active: 'Pikachu-active.png', fainted: 'Pikachu-fainted.webp' },
-        'bulba': { active: 'Bulbasaur-active.png', fainted: 'Bulbasaur-fainted.jpg' },
-        'charma': { active: 'Charmander-active.png', fainted: 'Charmander-fainted.jpg' },
-        'skurtle': { active: 'Squirtle-active.png', fainted: 'Squirtle-fainted.jpg' },
-        'digtil': { active: 'Diglett-active.png', fainted: 'Diglett-fainted.webp' }
-    };
+const getPokeImg = (name, state, side = 'front') => {
     const lower = (name || '').toLowerCase();
-    if (!map[lower]) return `${lower}-${state}.png`;
-    return map[lower][state];
+
+    if (state === 'active') {
+        return `Sprites/${lower}-${side}.gif`;
+    }
+
+    const fileMap = {
+        'pikacu': { fainted: 'Pikachu-fainted.webp' },
+        'bulba': { fainted: 'Bulbasaur-fainted.jpg' },
+        'charma': { fainted: 'Charmander-fainted.jpg' },
+        'skurtle': { fainted: 'Squirtle-fainted.jpg' },
+        'digtil': { fainted: 'Diglett-fainted.webp' }
+    };
+    
+    return fileMap[lower] ? fileMap[lower].fainted : `${lower}-fainted.png`;
 };
 
 const getHpColor = (hp, maxHp) => {
@@ -167,18 +172,18 @@ export default function Battle({
                             </div>
                         </div>
                     </div>
-                    <div className="relative w-24 h-24 md:w-32 lg:w-40 mr-2 flex-shrink-0">
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-4 bg-black/20 rounded-[100%]"></div>
-                        <img src={`/pokemon-images/${getPokeImg(rightActivePoke?.name, (rightActivePoke?.hp || 0) > 0 ? 'active' : 'fainted')}`} className={`absolute bottom-6 left-1/2 -translate-x-1/2 min-w-[120%] object-contain ${(rightActivePoke?.hp || 0) > 0 ? 'animate-bounce scale-x-[-1]' : 'scale-x-[-1] translate-y-8 grayscale sepia'} ${rightAnimClass}`} onError={(e) => { e.target.style.display = 'none'; }} />
+                    <div className="relative w-28 h-28 md:w-40 lg:w-48 mr-4 flex-shrink-0 mt-4 z-10">
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/20 rounded-[100%]"></div>
+                        <img src={`/pokemon-images/${getPokeImg(rightActivePoke?.name, (rightActivePoke?.hp || 0) > 0 ? 'active' : 'fainted', 'front')}`} className={`absolute bottom-4 left-1/2 -translate-x-1/2 min-w-[120%] object-contain ${(rightActivePoke?.hp || 0) > 0 ? 'animate-bounce' : 'translate-y-8 grayscale sepia'} ${rightAnimClass}`} />
                         {rightEffect && <div className={rightEffect}></div>}
                     </div>
                 </div>
 
                 {/* Player Pokémon (Bottom Left) */}
                 <div className="flex justify-between items-end w-full relative pb-2 mt-2">
-                    <div className="relative w-24 h-24 md:w-32 lg:w-40 ml-2 flex-shrink-0">
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/20 rounded-[100%]"></div>
-                        <img src={`/pokemon-images/${getPokeImg(leftActivePoke?.name, (leftActivePoke?.hp || 0) > 0 ? 'active' : 'fainted')}`} className={`absolute bottom-6 left-1/2 -translate-x-1/2 min-w-[120%] object-contain ${(leftActivePoke?.hp || 0) > 0 ? '' : 'translate-y-8 grayscale sepia'} ${leftAnimClass}`} onError={(e) => { e.target.style.display = 'none'; }} />
+                    <div className="relative w-32 h-32 md:w-44 lg:w-52 ml-4 flex-shrink-0 -mb-2 z-50 mt-4">
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-black/30 rounded-[100%]"></div>
+                        <img src={`/pokemon-images/${getPokeImg(leftActivePoke?.name, (leftActivePoke?.hp || 0) > 0 ? 'active' : 'fainted', 'back')}`} className={`absolute -bottom-2 left-1/2 -translate-x-1/2 min-w-[130%] object-contain drop-shadow-2xl ${(leftActivePoke?.hp || 0) > 0 ? '' : 'translate-y-8 grayscale sepia'} ${leftAnimClass}`} onError={(e) => { e.target.style.display = 'none'; }} />
                         {leftEffect && <div className={leftEffect}></div>}
                     </div>
                     <div className="bg-white border-4 border-gray-900 p-2 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-40 md:w-56 lg:w-64 relative z-30 self-end">
