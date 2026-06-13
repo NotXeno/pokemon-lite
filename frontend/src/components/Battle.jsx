@@ -217,6 +217,9 @@ export default function Battle({
                         {!gameState.winner && !isMyTurn && (
                             <p className="text-[9px] md:text-[10px] text-gray-400 uppercase leading-loose animate-pulse mt-1 font-black">Waiting for {enemyName}...</p>
                         )}
+                        {!gameState.winner && isMyTurn && (
+                            <p className="text-[9px] md:text-[10px] text-blue-500 uppercase leading-loose animate-pulse mt-1 font-black">It's your turn, go attack!</p>
+                        )}
                      </div>
                    )}
                 </div>
