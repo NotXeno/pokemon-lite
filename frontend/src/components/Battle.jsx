@@ -146,7 +146,11 @@ export default function Battle({
             <div className="flex justify-between items-center w-full max-w-4xl mx-auto mb-2 bg-white/50 p-2 rounded-xl border-4 border-gray-900 backdrop-blur-sm relative gap-2 shadow-sm">
                 <span className="font-black text-gray-800 text-[10px] uppercase">ROOM: {gameState.game_id.toUpperCase()}</span>
                 <div className="hidden lg:flex gap-2 text-[8px] items-center bg-white px-2 py-1 border-2 border-gray-900 rounded font-black uppercase shadow-inner text-gray-500">
-                    <span>WTR&gt;FIR</span>|<span>FIR&gt;GRA</span>|<span>GRA&gt;WTR</span>|<span>GND&gt;ELE</span>|<span>ELE&gt;WTR</span>
+                    <span><span className="text-blue-500">WTR</span>&gt;<span className="text-red-500">FIR</span></span>|
+                    <span><span className="text-red-500">FIR</span>&gt;<span className="text-green-500">GRA</span></span>|
+                    <span><span className="text-green-500">GRA</span>&gt;<span className="text-blue-500">WTR</span></span>|
+                    <span><span className="text-amber-700">GND</span>&gt;<span className="text-yellow-500">ELE</span></span>|
+                    <span><span className="text-yellow-500">ELE</span>&gt;<span className="text-blue-500">WTR</span></span>
                 </div>
             </div>
 
