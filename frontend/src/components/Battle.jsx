@@ -140,27 +140,6 @@ export default function Battle({
                     <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287-.947c.886.54 2.042.061 2.287-.947 1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                 </svg>
             </button>
-            
-            {gameState.winner && (
-                <div className="absolute inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-                    <div className="bg-white border-8 border-gray-900 rounded-2xl p-8 max-w-lg w-full text-center shadow-2xl animate-[bounce_0.5s_ease-out]">
-                        <h2 className="text-3xl font-black mb-4 text-gray-800 uppercase tracking-tight">BATTLE FINISHED!</h2>
-                        <p className="text-xl font-bold text-green-600 mb-8 uppercase tracking-widest">{gameState.winner.toUpperCase()} WINS!</p>
-                        <div className="flex gap-4 justify-center">
-                            {isSpectator ? (
-                                <button onClick={leaveRoom} className="flex-1 bg-red-500 border-4 border-gray-900 py-3 rounded-xl text-white font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-px active:shadow-none transition-all">LEAVE</button>
-                            ) : myState.wants_rematch ? (
-                                <div className="bg-yellow-100 border-4 border-yellow-400 text-yellow-700 font-bold py-3 px-6 rounded-xl animate-pulse uppercase text-xs">Waiting for Opponent...</div>
-                            ) : (
-                                <>
-                                    <button onClick={requestRematch} className="flex-1 bg-blue-500 border-4 border-gray-900 py-3 rounded-xl text-white font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-px active:shadow-none transition-all">REMATCH</button>
-                                    <button onClick={leaveRoom} className="flex-1 bg-red-500 border-4 border-gray-900 py-3 rounded-xl text-white font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-px active:shadow-none transition-all">LEAVE</button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Room Header */}
             <div className="flex justify-between items-center w-full max-w-4xl mx-auto mb-2 bg-white/50 p-2 rounded-xl border-4 border-gray-900 backdrop-blur-sm relative gap-2 shadow-sm">
@@ -307,6 +286,27 @@ export default function Battle({
                    )}
                 </div>
             </div>
+
+            {gameState.winner && (
+                <div className="absolute inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
+                    <div className="bg-white border-8 border-gray-900 rounded-2xl p-8 max-w-lg w-full text-center shadow-2xl animate-[bounce_0.5s_ease-out]">
+                        <h2 className="text-3xl font-black mb-4 text-gray-800 uppercase tracking-tight">BATTLE FINISHED!</h2>
+                        <p className="text-xl font-bold text-green-600 mb-8 uppercase tracking-widest">{gameState.winner.toUpperCase()} WINS!</p>
+                        <div className="flex gap-4 justify-center">
+                            {isSpectator ? (
+                                <button onClick={leaveRoom} className="flex-1 bg-red-500 border-4 border-gray-900 py-3 rounded-xl text-white font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-px active:shadow-none transition-all">LEAVE</button>
+                            ) : myState.wants_rematch ? (
+                                <div className="bg-yellow-100 border-4 border-yellow-400 text-yellow-700 font-bold py-3 px-6 rounded-xl animate-pulse uppercase text-xs">Waiting for Opponent...</div>
+                            ) : (
+                                <>
+                                    <button onClick={requestRematch} className="flex-1 bg-blue-500 border-4 border-gray-900 py-3 rounded-xl text-white font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-px active:shadow-none transition-all">REMATCH</button>
+                                    <button onClick={leaveRoom} className="flex-1 bg-red-500 border-4 border-gray-900 py-3 rounded-xl text-white font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-px active:shadow-none transition-all">LEAVE</button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
