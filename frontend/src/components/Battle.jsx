@@ -93,6 +93,7 @@ export default function Battle({
                 if (isHeal) effectImage = 'Recovery.png';
                 else if (lowerLog.includes('ember')) effectImage = 'Ember.png';
                 else if (lowerLog.includes('flamethrower')) effectImage = 'Flamethrower.png';
+                else if (lowerLog.includes('electro ball')) effectImage = 'ElectroBall.png';
                 else if (lowerLog.includes('thunder') || lowerLog.includes('electro') || lowerLog.includes('spark')) effectImage = 'Electric.png';
                 else if (lowerLog.includes('vine') || lowerLog.includes('leaf') || lowerLog.includes('grass') || lowerLog.includes('razor')) effectImage = 'Grass.png';
                 else if (lowerLog.includes('water') || lowerLog.includes('bubble') || lowerLog.includes('splash') || lowerLog.includes('aqua')) effectImage = 'Water.png';
