@@ -79,12 +79,14 @@ export default function Battle({
     useEffect(() => {
         const logs = gameState.battle_log || [];
         if (logs.length > prevLogLength.current) {
-            const lastLog = logs[logs.length - 1] || '';
-            if (lastLog.includes('used')) {
-                const isLeftAttacker = leftPlayer && lastLog.includes(`[${leftPlayer.player_name}]`);
-                const isRightAttacker = rightPlayer && lastLog.includes(`[${rightPlayer.player_name}]`);
+            const newLogs = logs.slice(prevLogLength.current);
+            const actionLog = newLogs.find(log => log.includes('used'));
+            
+            if (actionLog) {
+                const isLeftAttacker = leftPlayer && actionLog.includes(`[${leftPlayer.player_name}]`);
+                const isRightAttacker = rightPlayer && actionLog.includes(`[${rightPlayer.player_name}]`);
                 
-                const lowerLog = lastLog.toLowerCase();
+                const lowerLog = actionLog.toLowerCase();
                 const isHeal = lowerLog.includes('healed');
                 
                 let effectImage = 'Normal.png';
