@@ -84,28 +84,40 @@ export default function Battle({
                 const isLeftAttacker = leftPlayer && lastLog.includes(`[${leftPlayer.player_name}]`);
                 const isRightAttacker = rightPlayer && lastLog.includes(`[${rightPlayer.player_name}]`);
                 
-                let effectToUse = 'effect-explosion';
                 const lowerLog = lastLog.toLowerCase();
-                if (lowerLog.includes('water') || lowerLog.includes('bubble') || lowerLog.includes('splash') || lowerLog.includes('gun')) effectToUse = 'effect-water';
-                else if (lowerLog.includes('grass') || lowerLog.includes('leech') || lowerLog.includes('vine') || lowerLog.includes('leaf') || lowerLog.includes('razor')) effectToUse = 'effect-grass';
-                else if (lowerLog.includes('scratch') || lowerLog.includes('cut') || lowerLog.includes('slash')) effectToUse = 'effect-slash';
+                const isHeal = lowerLog.includes('healed');
                 
+                let effectImage = 'Normal.png';
+                if (isHeal) effectImage = 'Recovery.png';
+                else if (lowerLog.includes('ember')) effectImage = 'Ember.png';
+                else if (lowerLog.includes('flamethrower')) effectImage = 'Flamethrower.png';
+                else if (lowerLog.includes('thunder') || lowerLog.includes('electro') || lowerLog.includes('spark')) effectImage = 'Electric.png';
+                else if (lowerLog.includes('vine') || lowerLog.includes('leaf') || lowerLog.includes('grass') || lowerLog.includes('razor')) effectImage = 'Grass.png';
+                else if (lowerLog.includes('water') || lowerLog.includes('bubble') || lowerLog.includes('splash') || lowerLog.includes('aqua')) effectImage = 'Water.png';
+                else if (lowerLog.includes('mud') || lowerLog.includes('rock') || lowerLog.includes('earth') || lowerLog.includes('ground')) effectImage = 'Ground.png';
+
                 if (isLeftAttacker) {
-                    setLeftAnimClass('animate-attack-left');
+                    setLeftAnimClass(isHeal ? 'animate-heal' : 'animate-attack-left');
                     setTimeout(() => setLeftAnimClass(''), 300);
-                    if (!lastLog.includes('healed')) {
+                    if (isHeal) {
+                        setLeftEffect(effectImage);
+                        setTimeout(() => setLeftEffect(null), 800);
+                    } else {
                         setTimeout(() => {
-                            setRightEffect(effectToUse);
-                            setTimeout(() => setRightEffect(null), 500);
+                            setRightEffect(effectImage);
+                            setTimeout(() => setRightEffect(null), 800);
                         }, 200);
                     }
                 } else if (isRightAttacker) {
-                    setRightAnimClass('animate-attack-right');
+                    setRightAnimClass(isHeal ? 'anim-heal' : 'animate-attack-right');
                     setTimeout(() => setRightAnimClass(''), 300);
-                    if (!lastLog.includes('healed')) {
+                    if (isHeal) {
+                        setRightEffect(effectImage);
+                        setTimeout(() => setRightEffect(null), 800);
+                    } else {
                         setTimeout(() => {
-                            setLeftEffect(effectToUse);
-                            setTimeout(() => setLeftEffect(null), 500);
+                            setLeftEffect(effectImage);
+                            setTimeout(() => setLeftEffect(null), 800);
                         }, 200);
                     }
                 }
@@ -175,7 +187,7 @@ export default function Battle({
                     <div className="relative w-28 h-28 md:w-40 lg:w-48 mr-4 flex-shrink-0 mt-4 z-10">
                         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/20 rounded-[100%]"></div>
                         <img src={`/pokemon-images/${getPokeImg(rightActivePoke?.name, (rightActivePoke?.hp || 0) > 0 ? 'active' : 'fainted', 'front')}`} className={`absolute bottom-4 left-1/2 -translate-x-1/2 w-2/3 md:w-3/4 object-contain ${(rightActivePoke?.hp || 0) > 0 ? 'animate-bounce' : 'translate-y-8 grayscale sepia'} ${rightAnimClass}`} />
-                        {rightEffect && <div className={rightEffect}></div>}
+                        {rightEffect && <img src={`/Effects/${rightEffect}`} className="effect-image" />}
                     </div>
                 </div>
 
@@ -184,7 +196,7 @@ export default function Battle({
                     <div className="relative w-32 h-32 md:w-44 lg:w-52 ml-4 flex-shrink-0 -mb-2 z-50 mt-4">
                         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-black/30 rounded-[100%]"></div>
                         <img src={`/pokemon-images/${getPokeImg(leftActivePoke?.name, (leftActivePoke?.hp || 0) > 0 ? 'active' : 'fainted', 'back')}`} className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 md:w-[90%] object-contain drop-shadow-2xl ${(leftActivePoke?.hp || 0) > 0 ? '' : 'translate-y-8 grayscale sepia'} ${leftAnimClass}`} onError={(e) => { e.target.style.display = 'none'; }} />
-                        {leftEffect && <div className={leftEffect}></div>}
+                        {leftEffect && <img src={`/Effects/${leftEffect}`} className="effect-image" />}
                     </div>
                     <div className="bg-white border-4 border-gray-900 p-2 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-40 md:w-56 lg:w-64 relative z-30 self-end">
                         <div className="flex justify-between items-baseline mb-1">
