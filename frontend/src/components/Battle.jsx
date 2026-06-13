@@ -202,7 +202,11 @@ export default function Battle({
                     <div className="relative w-32 h-32 md:w-44 lg:w-52 ml-4 flex-shrink-0 -mb-2 z-50 mt-4">
                         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-black/30 rounded-[100%]"></div>
                         <img src={`/pokemon-images/${getPokeImg(leftActivePoke?.name, (leftActivePoke?.hp || 0) > 0 ? 'active' : 'fainted', 'back')}`} className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 md:w-[90%] object-contain drop-shadow-2xl ${(leftActivePoke?.hp || 0) > 0 ? '' : 'translate-y-8 grayscale sepia'} ${leftAnimClass}`} />
-                        {leftEffect && <img src={`/Effects/${leftEffect}`} className="effect-image" />}
+                        {leftEffect && (
+                            <div className={`absolute top-1/2 left-1/2 w-full h-full z-[60] pointer-events-none ${leftEffect.type === 'heal' ? 'effect-heal-anim' : 'effect-fly-from-enemy'}`}>
+                                <img src={`/Effects/${leftEffect.image}`} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250%] h-[250%] max-w-none object-contain" />
+                            </div>
+                        )}
                     </div>
                     <div className="bg-white border-4 border-gray-900 p-2 rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,0.5)] w-40 md:w-56 lg:w-64 relative z-30 self-end">
                         <div className="flex justify-between items-baseline mb-1">
