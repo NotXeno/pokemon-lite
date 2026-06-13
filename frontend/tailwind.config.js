@@ -28,6 +28,18 @@ export default {
         healEffect: {
           '0%, 100%': { filter: 'drop-shadow(0 0 0 rgba(34, 197, 94, 0)) brightness(1)' },
           '50%': { filter: 'drop-shadow(0 0 20px rgba(34, 197, 94, 1)) brightness(1.3)' },
+        },
+        swipeTop: {
+          '0%': { transform: 'translateX(100%)' },
+          '40%': { transform: 'translateX(0)' },
+          '60%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-100%)' },
+        },
+        swipeBottom: {
+          '0%': { transform: 'translateX(-100%)' },
+          '40%': { transform: 'translateX(0)' },
+          '60%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(100%)' },
         }
       },
       animation: {
@@ -35,6 +47,8 @@ export default {
         'attack-right': 'attackRight 0.3s ease-in-out',
         'hit': 'hitEffect 0.4s ease-in-out',
         'heal': 'healEffect 0.8s ease-in-out',
+        'swipe-top': 'swipeTop 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        'swipe-bottom': 'swipeBottom 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
       }
     },
   },

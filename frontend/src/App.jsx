@@ -18,6 +18,9 @@ function App() {
   const [sfxVolumeState, setSfxVolumeState] = useState(1.0);
   const [battleSubMenu, setBattleSubMenu] = useState('main');
 
+  const [renderedStatus, setRenderedStatus] = useState(null);
+  const [showTransition, setShowTransition] = useState(false);
+
   const ws = useRef(null);
   const audioRef = useRef(null);
   const logEndRef = useRef(null);
@@ -40,15 +43,37 @@ function App() {
   const setReady = () => { playStartGame(); ws.current?.send(JSON.stringify({ action: 'ready' })); };
   const sendMove = (name) => { playMenuClick(); ws.current?.send(JSON.stringify({ action: 'move', move_name: name })); };
   const switchPokemon = (idx) => { playMenuClick(); ws.current?.send(JSON.stringify({ action: 'switch', target_index: idx })); };
-  const leaveRoom = () => { playMenuCancel(); ws.current?.close(); setGameState(null); prevLogLenRef.current = 0; };
+  const leaveRoom = () => { playMenuCancel(); ws.current?.close(); setGameState(null); prevLogLenRef.current = 0; setRenderedStatus(null); };
   const requestRematch = () => { playStartGame(); ws.current?.send(JSON.stringify({ action: 'rematch' })); };
   
   // --- EFFECTS ---
   useEffect(() => { setSfxVolume(sfxVolumeState); }, [sfxVolumeState]);
 
   useEffect(() => {
+    if (!gameState) {
+      setRenderedStatus(null);
+      return;
+    }
+
+    if (gameState.status === 'battling' && renderedStatus !== 'battling') {
+      setShowTransition(true);
+      
+      setTimeout(() => {
+        setRenderedStatus('battling');
+      }, 600);
+
+      setTimeout(() => {
+        setShowTransition(false);
+      }, 1500);
+    } else if (gameState.status !== 'battling' && !showTransition) {
+      setRenderedStatus(gameState.status);
+    }
+  }, [gameState?.status, renderedStatus, showTransition]);
+
+  useEffect(() => {
     if (audioRef.current) {
         audioRef.current.volume = bgmVolume;
+        // Start BGM immediately when state becomes battling (same time transition starts)
         if (gameState && gameState.status === 'battling') {
             audioRef.current.play().catch(() => {});
         } else {
@@ -121,7 +146,7 @@ function App() {
 
   // --- RENDER LOGIC ---
   const renderScreen = () => {
-    if (!gameState) {
+    if (!gameState || !renderedStatus) {
       return <Lobby 
         roomInput={roomInput} setRoomInput={setRoomInput}
         nameInput={nameInput} setNameInput={setNameInput}
@@ -131,7 +156,7 @@ function App() {
       />;
     }
 
-    if (gameState.status === 'waiting' || gameState.status === 'selecting') {
+    if (renderedStatus === 'waiting' || renderedStatus === 'selecting') {
       return <SelectionScreen 
         gameState={gameState} nameInput={nameInput}
         pokemonList={pokemonList}
@@ -140,7 +165,7 @@ function App() {
       />;
     }
     
-    if (gameState.status === 'battling') {
+    if (renderedStatus === 'battling') {
       return <Battle 
         gameState={gameState} nameInput={nameInput}
         battleSubMenu={battleSubMenu} setBattleSubMenu={setBattleSubMenu}
@@ -155,6 +180,16 @@ function App() {
   return (
     <>
       {renderScreen()}
+      {showTransition && (
+        <div className="fixed inset-0 z-[9999] pointer-events-none flex flex-col overflow-hidden">
+          <div className="h-1/2 w-full bg-black animate-swipe-top border-b-[8px] border-white flex items-end justify-center pb-8">
+            <span className="text-white font-pokemon text-4xl md:text-6xl uppercase italic translate-y-1/2">V</span>
+          </div>
+          <div className="h-1/2 w-full bg-red-600 animate-swipe-bottom border-t-[8px] border-white flex items-start justify-center pt-8">
+            <span className="text-white font-pokemon text-4xl md:text-6xl uppercase italic -translate-y-1/2">S</span>
+          </div>
+        </div>
+      )}
       {showSettings && <Settings bgmVolume={bgmVolume} setBgmVolume={setBgmVolume} sfxVolume={sfxVolumeState} setSfxVolume={setSfxVolumeState} onClose={() => setShowSettings(false)} />}
       {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
       <audio ref={audioRef} loop src="/audio/battle.mp3" />
