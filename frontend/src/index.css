@@ -40,22 +40,36 @@
   50% { filter: drop-shadow(0 0 20px rgba(34, 197, 94, 1)) brightness(1.3); }
 }
 
-.effect-image {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 150%;
-  height: 150%;
-  object-fit: contain;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  z-index: 60;
-  animation: effectBlink 0.15s ease-in-out infinite alternate;
+@keyframes effectHealAnim {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; filter: drop-shadow(0 0 20px rgba(34,197,94,0.8)); }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
 
-@keyframes effectBlink {
-  0% { opacity: 0.2; transform: translate(-50%, -50%) scale(0.9); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+@keyframes flyFromPlayer {
+  0% { transform: translate(calc(-50% - 250px), calc(-50% + 150px)) scale(0.2); opacity: 0; }
+  20% { opacity: 1; }
+  70% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+@keyframes flyFromEnemy {
+  0% { transform: translate(calc(-50% + 250px), calc(-50% - 150px)) scale(0.2); opacity: 0; }
+  20% { opacity: 1; }
+  70% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+.effect-fly-from-player {
+  animation: flyFromPlayer 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.effect-fly-from-enemy {
+  animation: flyFromEnemy 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.effect-heal-anim {
+  animation: effectHealAnim 0.8s ease-in-out forwards;
 }
 
 .effect-slash {
