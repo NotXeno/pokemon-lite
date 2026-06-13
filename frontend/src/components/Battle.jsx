@@ -130,7 +130,7 @@ export default function Battle({
     }, [gameState.battle_log, leftPlayer, rightPlayer]);
 
     return (
-        <div className="h-screen bg-gradient-to-b from-blue-300 to-green-400 font-pokemon p-2 flex flex-col justify-between overflow-hidden relative">
+        <div className="h-screen bg-[url('/Background/Jungle.jpg')] bg-cover bg-center bg-no-repeat font-pokemon p-2 flex flex-col justify-between overflow-hidden relative">
             {/* Mid-Battle Settings Button */}
             <button 
                 onClick={() => setShowSettings(true)} 
